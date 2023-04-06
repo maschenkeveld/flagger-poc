@@ -1,0 +1,48 @@
+apiVersion: flagger.app/v1beta1
+kind: Canary
+metadata:
+  name: alice
+  namespace: apps-a-mesh-a
+  annotations:
+    kuma.io/mesh: mesh-a
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: alice
+  service:
+    # service name (optional)
+    name: alice
+    # ClusterIP port number (required)
+    port: 8080
+    # container port name or number
+    targetPort: http
+    # port name can be http or grpc (default http)
+    portName: http
+    apex:
+      annotations:
+        8080.service.kuma.io/protocol: "http"
+    canary:
+      annotations:
+        8080.service.kuma.io/protocol: "http"
+    primary:
+      annotations:
+        8080.service.kuma.io/protocol: "http"
+  analysis:
+    # schedule interval (default 60s)
+    interval: 30s
+    # max number of failed metric checks before rollback
+    threshold: 5
+    # max traffic percentage routed to canary
+    # percentage (0-100)
+    maxWeight: 50
+    # canary increment step
+    # percentage (0-100)
+    stepWeight: 5
+    metrics:
+      - name: request-success-rate
+        threshold: 99
+        interval: 1m
+      - name: request-duration
+        threshold: 500
+        interval: 30s

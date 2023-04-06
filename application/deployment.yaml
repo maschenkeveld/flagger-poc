@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: alice
+  labels:
+    app: alice
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: alice
+  template:
+    metadata:
+      labels:
+        app: alice
+      annotations:
+        # kuma.io/transparent-proxying-inbound-v6-port: "0"
+        # vault.hashicorp.com/agent-inject: 'true'
+        # vault.hashicorp.com/role: 'mesh-secrets'
+        # vault.hashicorp.com/agent-pre-populate: "false"
+        # vault.hashicorp.com/agent-inject-secret-data.txt: 'mesh-secrets/apps-a-mesh-a/data'
+        # vault.hashicorp.com/tls-skip-verify: 'true'
+        # vault.hashicorp.com/auth-path: 'auth/mesh-zone-a'
+        # vault.hashicorp.com/agent-inject-secret-config: 'mesh-secrets/apps-a-mesh-a/data'
+        # vault.hashicorp.com/agent-inject-template-config: |
+        #   {{ with secret "mesh-secrets/apps-a-mesh-a/data" -}}
+        #     export name="{{ .Data.data.name }}"
+        #   {{- end }}
+        # vault.hashicorp.com/agent-inject: 'true'
+        # vault.hashicorp.com/agent-configmap: 'vault-kong-mesh-tls'
+        # vault.hashicorp.com/tls-skip-verify: 'true'
+    spec:
+      containers:
+      - name: mesh-crawler
+        image: "docker-read-nexus.mschnkvld.lab:443/mesh-crawler:1.0.3"
+        env:
+        - name: app_name
+          value: "alice"
+        - name: app_port
+          value: "8080"
+        - name: MY_NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: MY_POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: MY_POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: MY_POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: MY_POD_SERVICE_ACCOUNT
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.serviceAccountName
+        ports:
+        - name: http
+          containerPort: 8080
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: alice
+#   labels:
+#     app: alice
+# spec:
+#   ports:
+#   - name: http
+#     port: 8080
+#     targetPort: 8080
+#     appProtocol: http
+#   selector:
+#     app: alice
+#   type: ClusterIP
+# ---
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: vault-kong-mesh-tls
+# data:
+#   config.hcl: |
+#     "auto_auth" = {
+#       "method" = {
+#         "config" = {
+#           "role" = "kong-mesh"
+#         }
+#         "type" = "kubernetes"
+#         "mount_path" = "auth/mesh-zone-a"
+#       }
+
+#       "sink" = {
+#         "config" = {
+#           "path" = "/home/vault/.token"
+#         }
+
+#         "type" = "file"
+#       }
+#     }
+
+#     "exit_after_auth" = false
+#     "pid_file" = "/home/vault/.pid"
+
+#     "template" = {
+#       "contents" = "{{- with secret \"kong-mesh/tls\" -}}{{ .Data.data.ca }}{{- end }}"
+#       "destination" = "/vault/secrets/ca.crt"
+#     }
+#   config-init.hcl: |
+#     "auto_auth" = {
+#       "method" = {
+#         "config" = {
+#           "role" = "kong-mesh"
+#         }
+#         "type" = "kubernetes"
+#         "auth_path" = "auth/mesh-zone-a"
+#       }
+# 
+#       "sink" = {
+#         "config" = {
+#           "path" = "/home/vault/.token"
+#         }
+# 
+#         "type" = "file"
+#       }
+#     }
+# 
+#     "exit_after_auth" = false
+#     "pid_file" = "/home/vault/.pid"
+# 
+#     "template" = {
+#       "contents" = "{{- with secret \"kong-mesh/tls\" -}}.Data.ca{{- end }}"
+#       "destination" = "/vault/secrets/ca.crt"
+#     }
